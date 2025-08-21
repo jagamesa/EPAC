@@ -1,0 +1,58 @@
+name: azure-policy-cicd
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "policy/**", ".github/workflows/**" ]
+  pull_request:
+    branches: [ main ]
+    paths: [ "policy/**", ".github/workflows/**" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Bicep What-If (subscription scope)
+        run: |
+          az bicep build --file policy/infra/main.bicep
+          az deployment sub what-if \
+            --name policy-whatif-${{ github.run_id }} \
+            --location westeurope \
+            --template-file policy/infra/main.bicep \
+            --parameters @policy/infra/params.example.json
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy Policy (subscription scope)
+        run: |
+          az deployment sub create \
+            --name policy-deploy-${{ github.run_id }} \
+            --location westeurope \
+            --template-file policy/infra/main.bicep \
+            --parameters @policy/infra/params.example.json
+      - name: Trigger compliance scan
+        run: az policy state trigger-scan --no-wait
+      - name: Remediate (DeployIfNotExists)
+        run: |
+          az policy remediation create \
+            --name baseline-remediation-${{ github.run_id }} \
+            --policy-assignment baseline-policy-assignment || true

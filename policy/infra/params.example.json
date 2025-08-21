@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "initiativeName": { "value": "baseline-policy-initiative" },
+    "assignmentName": { "value": "baseline-policy-assignment" },
+    "location": { "value": "westeurope" },
+    "logAnalyticsWorkspaceId": { "value": "/subscriptions/<SUB_ID>/resourceGroups/<RG>/providers/Microsoft.OperationalInsights/workspaces/<LAW_NAME>" },
+    "diagnosticSettingName": { "value": "send-to-law" },
+    "categoryGroup": { "value": "Audit" },
+    "enableMetrics": { "value": true },
+    "emergencyPrincipalIds": { "value": [ "<OBJECT_ID_1>", "<OBJECT_ID_2>" ] },
+    "allowedRoleDefinitionIds": { "value": [] },
+    "allowedScopePrefix": { "value": "" }
+  }
+}

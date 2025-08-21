@@ -1,0 +1,128 @@
+{
+  "properties": {
+    "displayName": "Enable Diagnostic Settings to Log Analytics (by category group)",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Deploys diagnostic settings to resources that support them, sending logs to a Log Analytics workspace using the selected category group.",
+    "metadata": { "category": "Monitoring" },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": { "displayName": "Effect" },
+        "allowedValues": [ "DeployIfNotExists", "AuditIfNotExists", "Disabled" ],
+        "defaultValue": "DeployIfNotExists"
+      },
+      "logAnalyticsWorkspaceId": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Log Analytics workspace resourceId",
+          "description": "Resource ID of the target Log Analytics workspace."
+        }
+      },
+      "diagnosticSettingName": {
+        "type": "String",
+        "metadata": { "displayName": "Diagnostic setting name" },
+        "defaultValue": "send-to-law"
+      },
+      "categoryGroup": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Category group",
+          "description": "Which log category group to enable."
+        },
+        "allowedValues": [ "AllLogs", "Audit", "Security" ],
+        "defaultValue": "Audit"
+      },
+      "enableMetrics": {
+        "type": "Boolean",
+        "metadata": { "displayName": "Enable AllMetrics" },
+        "defaultValue": true
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          { "field": "type", "notEquals": "Microsoft.Insights/diagnosticSettings" }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.Insights/diagnosticSettings",
+          "existenceScope": "resource",
+          "existenceCondition": {
+            "allOf": [
+              {
+                "field": "Microsoft.Insights/diagnosticSettings/workspaceId",
+                "equals": "[parameters('logAnalyticsWorkspaceId')]"
+              },
+              {
+                "count": {
+                  "field": "Microsoft.Insights/diagnosticSettings/logs[*]",
+                  "where": {
+                    "allOf": [
+                      {
+                        "field": "Microsoft.Insights/diagnosticSettings/logs[*].categoryGroup",
+                        "equals": "[parameters('categoryGroup')]"
+                      },
+                      {
+                        "field": "Microsoft.Insights/diagnosticSettings/logs[*].enabled",
+                        "equals": "True"
+                      }
+                    ]
+                  }
+                },
+                "greaterOrEquals": 1
+              }
+            ]
+          },
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/749f88d5-cbae-40b8-bcfc-e573ddc772fa"
+          ],
+          "deploymentScope": "resource",
+          "deployment": {
+            "properties": {
+              "mode": "Incremental",
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "diagnosticSettingName": { "type": "string" },
+                  "workspaceId": { "type": "string" },
+                  "categoryGroup": { "type": "string" },
+                  "enableMetrics": { "type": "bool" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.Insights/diagnosticSettings",
+                    "apiVersion": "2021-05-01-preview",
+                    "name": "[parameters('diagnosticSettingName')]",
+                    "properties": {
+                      "workspaceId": "[parameters('workspaceId')]",
+                      "logs": [
+                        { "categoryGroup": "[parameters('categoryGroup')]", "enabled": true }
+                      ],
+                      "metrics": [
+                        {
+                          "category": "AllMetrics",
+                          "enabled": "[parameters('enableMetrics')]",
+                          "retentionPolicy": { "enabled": false, "days": 0 }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "parameters": {
+                "diagnosticSettingName": { "value": "[parameters('diagnosticSettingName')]" },
+                "workspaceId": { "value": "[parameters('logAnalyticsWorkspaceId')]" },
+                "categoryGroup": { "value": "[parameters('categoryGroup')]" },
+                "enableMetrics": { "value": "[parameters('enableMetrics')]" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

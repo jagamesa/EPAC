@@ -1,0 +1,63 @@
+{
+  "properties": {
+    "displayName": "Deny: Break-glass accounts must only have allowed RBAC roles and scopes",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Denies role assignments for emergency (break-glass) principals that use unapproved role definitions or scopes.",
+    "parameters": {
+      "emergencyPrincipalIds": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Emergency principal object IDs",
+          "description": "Object IDs (GUID) for the break-glass accounts (user, group, or service principal)."
+        }
+      },
+      "allowedRoleDefinitionIds": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed role definition IDs",
+          "description": "Full role definition IDs allowed for these principals. Leave empty to forbid any assignment."
+        },
+        "defaultValue": []
+      },
+      "allowedScopePrefix": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Allowed scope prefix",
+          "description": "Scope prefix where assignments are permitted (e.g., /subscriptions/<subId> or /subscriptions/<subId>/resourceGroups/<rg>). Leave empty to allow any scope."
+        },
+        "defaultValue": ""
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          { "field": "type", "equals": "Microsoft.Authorization/roleAssignments" },
+          { "field": "Microsoft.Authorization/roleAssignments/principalId", "in": "[parameters('emergencyPrincipalIds')]" },
+          {
+            "anyOf": [
+              {
+                "not": {
+                  "field": "Microsoft.Authorization/roleAssignments/roleDefinitionId",
+                  "in": "[parameters('allowedRoleDefinitionIds')]"
+                }
+              },
+              {
+                "allOf": [
+                  { "value": "[length(parameters('allowedScopePrefix'))]", "greater": 0 },
+                  {
+                    "not": {
+                      "field": "id",
+                      "like": "[concat(parameters('allowedScopePrefix'), '/providers/Microsoft.Authorization/roleAssignments/*')]"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "then": { "effect": "deny" }
+    }
+  }
+}
