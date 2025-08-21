@@ -1,0 +1,10 @@
+.vs/
+.vscode/
+bin/
+obj/
+Thumbs.db
+*.user
+*.suo
+*.log
+*.cache
+policy/infra/params.json
